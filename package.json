@@ -1,0 +1,9 @@
+{
+  "scripts": {
+    "test": "node run-tests.js",
+    "test:playwright": "npx playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1"
+  }
+}
