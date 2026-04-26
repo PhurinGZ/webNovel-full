@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme {
+  --color-admin-primary: #1e293b;
+  --color-admin-secondary: #64748b;
+  --color-admin-accent: #e11d48;
+  
+  --font-sans: 'Inter', system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 antialiased;
+  }
+}
+
+@layer components {
+  .sidebar-link {
+    @apply flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all;
+  }
+  
+  .sidebar-link-active {
+    @apply flex items-center gap-3 px-4 py-3 text-sm font-bold text-white bg-slate-900 rounded-xl transition-all shadow-lg shadow-slate-200;
+  }
+
+  .admin-card {
+    @apply bg-white p-6 rounded-3xl border border-slate-100 shadow-sm;
+  }
+
+  .admin-button-primary {
+    @apply px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-all active:scale-95;
+  }
+}

@@ -1,0 +1,270 @@
+// This is your Prisma schema file,
+// learn more here: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  username      String    @unique
+  password      String
+  name          String?
+  avatar        String?
+  bio           String?
+  role          Role      @default(READER)
+  coins         Int       @default(100)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  novels        Novel[]
+  bookmarks     Bookmark[]
+  purchases     Purchase[]
+  reviews       Review[]
+  ratings       Rating[]
+  comments      Comment[]
+  coinHistory   CoinTransaction[]
+  notifications Notification[]
+  followers     Follow[]    @relation("Following")
+  following     Follow[]    @relation("Follower")
+  readingHistory ReadingHistory[]
+  payoutRequests PayoutRequest[]
+
+  @@map("users")
+  @@index([role])
+  @@index([email])
+}
+
+model Novel {
+  id            String    @id @default(cuid())
+  title         String
+  slug          String    @unique
+  description   String
+  coverImage    String?
+  authorId      String
+  author        User      @relation(fields: [authorId], references: [id])
+  categories    Category[]
+  status        Status    @default(DRAFT)
+  isFree        Boolean   @default(true)
+  price         Float   @default(0)
+  rating        Float     @default(0)
+  views         Int       @default(0)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  chapters      Chapter[]
+  bookmarks     Bookmark[]
+  purchases     Purchase[]
+  reviews       Review[]
+  ratings       Rating[]
+  readingHistory ReadingHistory[]
+
+  @@map("novels")
+  @@index([status])
+  @@index([authorId])
+  @@index([views(sort: Desc)])
+}
+
+model Chapter {
+  id            String    @id @default(cuid())
+  novelId       String
+  novel         Novel     @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  title         String
+  content       String
+  order         Int
+  isFree        Boolean   @default(true)
+  price         Float   @default(0)
+  wordCount     Int       @default(0)
+  publishedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  comments      Comment[]
+  purchases     Purchase[]
+  readingHistory ReadingHistory[]
+
+  @@map("chapters")
+  @@index([novelId, order])
+}
+
+model Category {
+  id            String    @id @default(cuid())
+  name          String    @unique
+  slug          String    @unique
+  novels        Novel[]
+
+  @@map("categories")
+}
+
+model Bookmark {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  novelId       String
+  novel         Novel     @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+
+  @@unique([userId, novelId])
+  @@map("bookmarks")
+}
+
+model Purchase {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  novelId       String
+  novel         Novel     @relation(fields: [novelId], references: [id])
+  chapterId     String?
+  chapter       Chapter?  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  price         Float   @default(0)
+  createdAt     DateTime  @default(now())
+
+  @@unique([userId, novelId, chapterId], name: "purchase_unique")
+  @@map("purchases")
+}
+
+model CoinTransaction {
+  id            String          @id @default(cuid())
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount        Int
+  type          TransactionType
+  description   String
+  metadata      String?         // JSON string for additional info
+  createdAt     DateTime        @default(now())
+
+  @@map("coin_transactions")
+}
+
+model PayoutRequest {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount      Float         // Actual currency amount
+  coins       Int           // Number of coins exchanged
+  status      PayoutStatus  @default(PENDING)
+  bankDetails String?
+  txHash      String?       // For tracking the actual payment
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@map("payout_requests")
+}
+
+enum PayoutStatus {
+  PENDING
+  APPROVED
+  PAID
+  REJECTED
+}
+
+model Rating {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  novelId       String
+  novel         Novel     @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  score         Int
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([userId, novelId])
+  @@map("ratings")
+}
+
+model Review {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  novelId       String
+  novel         Novel     @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  content       String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("reviews")
+}
+
+model Comment {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chapterId     String
+  chapter       Chapter   @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  content       String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@map("comments")
+}
+
+model Notification {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type          String    // REVIEW, RATING, PURCHASE, FOLLOW, CHAPTER
+  title         String
+  content       String
+  link          String?
+  read          Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+
+  @@map("notifications")
+}
+
+model Follow {
+  id            String    @id @default(cuid())
+  followerId    String
+  follower      User      @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  followingId   String
+  following     User      @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+
+  @@unique([followerId, followingId])
+  @@map("follows")
+}
+
+model ReadingHistory {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  novelId       String
+  novel         Novel     @relation(fields: [novelId], references: [id], onDelete: Cascade)
+  chapterId     String
+  chapter       Chapter   @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  progress      Int       @default(0) // percentage
+  readAt        DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([userId, novelId])
+  @@map("reading_history")
+}
+
+enum Role {
+  READER
+  AUTHOR
+  ADMIN
+}
+
+enum Status {
+  DRAFT
+  PUBLISHED
+  COMPLETED
+  HIATUS
+}
+
+enum TransactionType {
+  PURCHASE
+  EARN
+  TOP_UP
+  REFUND
+}
