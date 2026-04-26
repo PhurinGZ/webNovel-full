@@ -2,14 +2,21 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { BookOpen, Menu, X, Search, User, PenTool, Coins } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { signOut, useSession } from 'next-auth/react';
+import { BookOpen, Menu, X, Search, User, PenTool, Coins, LogOut } from 'lucide-react';
 import { NotificationBell } from './NotificationBell';
 
 export function Header() {
   const router = useRouter();
+  const { data: session, status } = useSession();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const isLoggedIn = status === 'authenticated' && session;
+  const isAuthor = isLoggedIn && (session as any)?.user?.role === 'AUTHOR';
+  const isAdmin = isLoggedIn && (session as any)?.user?.role === 'ADMIN';
+  const canWrite = isAuthor || isAdmin;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,6 +24,10 @@ export function Header() {
       router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
       setSearchQuery('');
     }
+  };
+
+  const handleLogout = async () => {
+    await signOut({ callbackUrl: '/' });
   };
 
   return (
@@ -71,18 +82,72 @@ export function Header() {
               <Coins className="w-5 h-5" />
             </Link>
 
-            <Link href="/dashboard" className="p-2 text-slate-500 hover:text-primary-600 hover:bg-primary-50 rounded-full transition-all" title="สตูดิโอจัดการนิยาย">
-              <PenTool className="w-5 h-5" />
-            </Link>
+            {canWrite && (
+              <Link href="/dashboard" className="p-2 text-slate-500 hover:text-primary-600 hover:bg-primary-50 rounded-full transition-all" title="สตูดิโอจัดการนิยาย">
+                <PenTool className="w-5 h-5" />
+              </Link>
+            )}
 
             <NotificationBell />
 
-            <Link href="/profile" className="flex items-center gap-2 p-1 pl-1 pr-3 border border-slate-200 rounded-full hover:bg-slate-50 transition-all">
-              <div className="w-7 h-7 bg-slate-200 rounded-full flex items-center justify-center">
-                <User className="w-4 h-4 text-slate-500" />
+            {/* User menu - only show when logged in */}
+            {isLoggedIn ? (
+              <div className="relative">
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="flex items-center gap-2 p-1 pl-1 pr-3 border border-slate-200 rounded-full hover:bg-slate-50 transition-all"
+                >
+                  <div className="w-7 h-7 bg-slate-200 rounded-full flex items-center justify-center">
+                    <User className="w-4 h-4 text-slate-500" />
+                  </div>
+                  <span className="text-xs font-semibold text-slate-700">บัญชี</span>
+                </button>
+
+                {userMenuOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl border border-slate-200 shadow-xl py-1 z-50">
+                    <Link
+                      href="/profile"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                      <User className="w-4 h-4" />
+                      โปรไฟล์
+                    </Link>
+                    <Link
+                      href="/settings"
+                      onClick={() => setUserMenuOpen(false)}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                    >
+                      <Search className="w-4 h-4" />
+                      ตั้งค่า
+                    </Link>
+                    <div className="my-1 h-px bg-slate-100" />
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      ออกจากระบบ
+                    </button>
+                  </div>
+                )}
               </div>
-              <span className="text-xs font-semibold text-slate-700">บัญชี</span>
-            </Link>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/auth/login"
+                  className="px-4 py-2 text-sm font-semibold text-slate-700 hover:text-primary-600 transition-colors"
+                >
+                  เข้าสู่ระบบ
+                </Link>
+                <Link
+                  href="/auth/register"
+                  className="px-4 py-2 text-sm font-semibold bg-primary-600 text-white rounded-full hover:bg-primary-700 transition-colors"
+                >
+                  สมัคร
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -133,10 +198,24 @@ export function Header() {
                 <Coins className="w-5 h-5" />
                 <span>เติมเหรียญ</span>
               </Link>
-              <Link href="/write" className="flex items-center gap-3 px-4 py-3 mt-2 bg-slate-900 text-white rounded-2xl font-bold justify-center hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">
-                <PenTool className="w-4 h-4" />
-                <span>เริ่มเขียนนิยาย</span>
-              </Link>
+              {canWrite && (
+                <Link href="/write" className="flex items-center gap-3 px-4 py-3 mt-2 bg-slate-900 text-white rounded-2xl font-bold justify-center hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">
+                  <PenTool className="w-4 h-4" />
+                  <span>เริ่มเขียนนิยาย</span>
+                </Link>
+              )}
+              {isLoggedIn && (
+                <>
+                  <div className="my-4 h-px bg-slate-100" />
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-red-600 hover:bg-red-50 rounded-xl transition-all w-full text-left"
+                  >
+                    <LogOut className="w-5 h-5" />
+                    <span>ออกจากระบบ</span>
+                  </button>
+                </>
+              )}
             </nav>
           </div>
         )}
